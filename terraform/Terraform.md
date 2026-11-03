@@ -446,7 +446,7 @@ terraform state list
 - 또한 `terraform destroy` 명령을 사용하여 구성에서 관리하는 모든 리소스를 한 번에 삭제할 수도 있습니다.
 
 ### 1. Remove a resource
-- EC2 인스턴스를 configuration에서 제거하기 위해 `open.tf` 파일을 열어 `aws_instance.app_server`리소스 블록을 주석처리 할 것.
+- EC2 인스턴스를 configuration에서 제거하기 위해 `main.tf` 파일을 열어 `aws_instance.app_server`리소스 블록을 주석처리 할 것.
 - `outputs.tf` 파일의 `instance_hostname` 출력 값은 `main.tf`에서 제거한 EC2 인스턴스를 참조하므로 해당 출력 값을 주석 처리할 것. 그렇지 않으면 구성이 유효하지 않게 됨.
 - `terraform apply` 를 실행시켜 해당 변경을 적용할 것
 - Terraform이 인스턴스를 삭제하고 출력 값을 제거하는 계획을 승인하려면 확인 메시지에 '예'라고 응답하십시오.
@@ -466,3 +466,118 @@ terraform destroy
 
 - `terraform destroy` 를 실행시켜 workspace를 제거하십시오.
 
+---
+
+## 4. Collaborate using HCP Terraform
+
+- HCP Terraform은 조직내에서 인프라 프로젝트에 대해 협업하도록 도움
+- 안전한 원격 실행 환경을 제공하여 인프라 변경 사항을 공동으로 관리할 수 있도록 함
+- API 토큰 및 액세스 키를 포함한 Terraform 상태 및 변수를 안전하게 저장
+- Terraform CLI는 HCP Terraform과 통합되어 로컬 머신에서 원격 실행을 트리거 가능
+
+### 1. 리소스 생성
+
+```terraform
+terraform apply
+```
+
+
+
+
+### 2. Sign up for HCP Terraform
+- 계정 생성, organization 생성...
+
+
+
+
+### 3. Log into HCP Terraform
+
+```terraform
+terraform login
+```
+
+- api 토큰 만들고... 로그인 하고...
+
+
+
+
+### 4. Connect workspace to HCP Terraform
+
+- 워크스페이스를 HCP Terraform에 연결하려면 구성을 업데이트하고 커맨드라인에서 워크스페이스를 다시 초기화해야 함
+- HCP Terraform 워크스페이스는 로컬 Terraform 워크스페이스와 유사하게 작동하지만, Terraform 작업을 실행하고 상태를 HCP Terraform 내에 저장
+- HCP Terraform은 워크스페이스를 프로젝트로 그룹화하여 액세스 및 설정을 보다 쉽게 ​​관리할 수 있도록 지원
+
+#### 4.1 configuration 업데이트
+- 로컬 workspace를 HCP Terraform과 연결하기 위해 `terraform.tf` 파일에 cloud 블록을 추가
+
+terraform.tf
+```terraform
+terraform {
+  cloud {
+    organization = "your-organization-name"
+
+    workspaces {
+      project = "Learn Terraform"
+      name = "learn-terraform-aws-get-started"
+    }
+  }
+
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.92"
+    }
+  }
+
+  required_version = ">= 1.2.0"
+}
+
+```
+
+#### 4.2 HCP Terraform 으로 migration
+- HCP Terraform 통합 구성이 완료되었으니 `terraform init` 명령 실행으로 구성을 다시 초기화하고 상태를 HCP Terraform으로 복사할 것
+- 마이그레이션을 확인하려면 확인 메시지에 `yes`라고 응답하십시오.
+
+```terraform
+terraform init
+```
+
+- 클라우드 블록을 구성에 추가한 후 `terraform init` 명령을 실행할 경우, Terraform은 프로젝트와 워크스페이스가 존재하지 않으면 새 프로젝트와 워크스페이스를 생성하고 이미 존재하는 경우 기존 프로젝트와 워크스페이스를 사용
+
+#### 4.3 Configure AWS credentials
+- `terraform init`했을때 HCP Terraform organization에 `Learn Terraform` 프로젝트와 `learn-terraform-aws-get-started` 워크스페이스가 생성
+- HCP Terraform이 AWS 공급자와 인증하고 리소스를 프로비저닝하려면 AWS 자격 증명으로 워크스페이스를 구성해야함
+- HCP Terraform에서 learn-terraform-aws-get-started 워크스페이스로 이동한 다음 워크스페이스의 변수 페이지로 이동
+- 워크스페이스 변수에서 AWS_ACCESS_KEY_ID와 AWS_SECRET_ACCESS_KEY를 환경 변수로 추가하고, 반드시 민감 변수로 표시할 것!
+
+#### 4.4 Apply configuration
+- HCP Terraform을 사용하여 구성을 업데이트하고 적용
+- main.tf 파일에서 EC2 인스턴스에 대한 구성의 주석 처리를 해제, output.tf 에서의 주석도 해제...
+- 그리고 HCP Terraform 에서 실행시키기 위해 `terraform apply` 실행.
+- Terraform은 HCP Terraform에서 원격으로 계획 및 적용 작업을 실행하고 출력을 터미널 창으로 스트리밍
+- 확인 메시지가 나타나면 '예'를 선택하여 HCP Terraform이 인프라를 프로비저닝하도록 지시할 것
+
+```terraform
+terraform apply
+```
+
+- Terraform은 워크스페이스 상태를 HCP Terraform에 원격으로 저장
+- Terraform이 출력하는 URL을 방문하면 HCP Terraform에서 실행 결과를 확인 가능
+- CLI 기반 워크플로를 사용하면 로컬 머신에서 Terraform 명령을 실행할 수 있으며, HCP Terraform이 해당 명령을 실행하고 출력을 CLI로 스트리밍
+- HCP Terraform에서 계획 및 적용 실행 결과를 검토하고 워크스페이스를 구성 가능
+
+---
+
+### 5. Destroy workspace
+
+- 이 튜토리얼에서 프로비저닝한 리소스를 삭제하려면 `terraform destroy` 명령을 실행
+- 확인 메시지가 나타나면 '예'를 선택하여 HCP Terraform이 워크스페이스에서 관리하는 모든 리소스를 삭제하도록 지시
+
+```terraform 
+terraform destroy
+```
+
+- HCP Terraform에서 learn-terraform-aws-get-started 워크스페이스의 설정 > 삭제 탭으로 이동하여 워크스페이스를 삭제
+- HCP Terraform에서 삭제 버튼을 클릭한 다음, 안내에 따라 워크스페이스를 삭제
+
+- 프로젝트 설정 페이지로 이동하여 삭제 버튼을 클릭하고 안내에 따라 진행하면 프로젝트를 삭제할 수 있음
